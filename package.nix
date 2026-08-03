@@ -12,7 +12,7 @@
   gst_all_1,
   xorg,
   libpulseaudio,
-  mysql80,
+  mysql,
   makeDesktopItem,
   copyDesktopItems,
 }:
