@@ -12,7 +12,6 @@
   gst_all_1,
   xorg,
   libpulseaudio,
-  mysql,
   makeDesktopItem,
   copyDesktopItems,
 }:
@@ -44,7 +43,6 @@ stdenv.mkDerivation {
     libpqxx
     unixODBC
     stdenv.cc.cc
-    mysql
     udev
     libpulseaudio
   ] ++ (with gst_all_1; [
