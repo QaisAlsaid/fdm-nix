@@ -44,7 +44,7 @@ stdenv.mkDerivation {
     libpqxx
     unixODBC
     stdenv.cc.cc
-    mysql80
+    mysql
     udev
     libpulseaudio
   ] ++ (with gst_all_1; [
