@@ -1,35 +1,42 @@
-{ lib
-, stdenv
-, fetchurl
-, dpkg
-, wrapGAppsHook
-, autoPatchelfHook
-, udev
-, libdrm
-, libpqxx
-, unixODBC
-, gst_all_1
-, xorg
-, libpulseaudio
-, mysql80
+{
+  lib,
+  stdenv,
+  fetchurl,
+  dpkg,
+  autoPatchelfHook,
+  wrapGAppsHook,
+  udev,
+  libdrm,
+  libpqxx,
+  unixODBC,
+  gst_all_1,
+  xorg,
+  libpulseaudio,
+  mysql80,
+  makeDesktopItem,
+  copyDesktopItems,
 }:
 
-stdenv.mkDerivation rec {
+let
+  release = import ./version.nix;
+in
+stdenv.mkDerivation {
   pname = "freedownloadmanager";
-  version = "6.21.0.5639";
+  
+  inherit (release) version;
 
   src = fetchurl {
     url = "https://files2.freedownloadmanager.org/6/latest/freedownloadmanager.deb";
-    # Read the hash from your auto-updated local file and strip any trailing newlines
-    hash = lib.strings.trim (builtins.readFile ./sri);
+    inherit (release) hash;
   };
 
   unpackPhase = "dpkg-deb -x $src .";
 
   nativeBuildInputs = [
     dpkg
-    wrapGAppsHook
     autoPatchelfHook
+    wrapGAppsHook
+    copyDesktopItems
   ];
 
   buildInputs = [
@@ -38,6 +45,8 @@ stdenv.mkDerivation rec {
     unixODBC
     stdenv.cc.cc
     mysql80
+    udev
+    libpulseaudio
   ] ++ (with gst_all_1; [
     gstreamer
     gst-libav
@@ -45,27 +54,34 @@ stdenv.mkDerivation rec {
     gst-plugins-good
     gst-plugins-bad
     gst-plugins-ugly
-  ])++(with xorg; [
-    xcbutilwm          # libxcb-icccm.so.4
-    xcbutilimage       # libxcb-image.so.0
-    xcbutilkeysyms     # libxcb-keysyms.so.1
-    xcbutilrenderutil  # libxcb-render-util.so.0
-    libpulseaudio
+  ]) ++ (with xorg; [
+    xcbutilwm
+    xcbutilimage
+    xcbutilkeysyms
+    xcbutilrenderutil
   ]);
 
-  runtimeDependencies = [
-    (lib.getLib udev)
+  desktopItems = [
+    (makeDesktopItem {
+      name = "freedownloadmanager";
+      exec = "freedownloadmanager";
+      icon = "freedownloadmanager";
+      desktopName = "Free Download Manager";
+      categories = [ "Network" "FileTransfer" ];
+    })
   ];
 
   installPhase = ''
-    mkdir -p $out/bin
-    cp -r opt/freedownloadmanager $out
-    cp -r usr/share $out
-    ln -s $out/freedownloadmanager/fdm $out/bin/${pname}
+    mkdir -p $out/opt/freedownloadmanager
+    cp -r opt/freedownloadmanager/* $out/opt/freedownloadmanager/
 
-    substituteInPlace $out/share/applications/freedownloadmanager.desktop \
-      --replace 'Exec=/opt/freedownloadmanager/fdm' 'Exec=${pname}' \
-      --replace "Icon=/opt/freedownloadmanager/icon.png" "Icon=$out/freedownloadmanager/icon.png"
+    mkdir -p $out/bin
+    ln -s $out/opt/freedownloadmanager/fdm $out/bin/freedownloadmanager
+
+    mkdir -p $out/share/pixmaps
+    if [ -f "$out/opt/freedownloadmanager/icon.png" ]; then
+      cp "$out/opt/freedownloadmanager/icon.png" $out/share/pixmaps/freedownloadmanager.png
+    fi
   '';
 
   meta = with lib; {
@@ -73,7 +89,6 @@ stdenv.mkDerivation rec {
     homepage = "https://www.freedownloadmanager.org";
     license = licenses.unfree;
     platforms = [ "x86_64-linux" ];
-    sourceProvenance = with sourceTypes; [ binaryNativeCode ];
-    maintainers = with maintainers; [ ];
+    mainProgram = "freedownloadmanager";
   };
 }
