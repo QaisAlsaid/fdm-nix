@@ -4,7 +4,7 @@
   fetchurl,
   dpkg,
   autoPatchelfHook,
-  wrapGAppsHook,
+  wrapGAppsHook3,
   udev,
   libdrm,
   libpqxx,
@@ -34,7 +34,7 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     dpkg
     autoPatchelfHook
-    wrapGAppsHook
+    wrapGAppsHook3
     copyDesktopItems
   ];
 
