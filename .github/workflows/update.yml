@@ -22,10 +22,12 @@ jobs:
           ASSET: freedownloadmanager.deb
         run: |
           wget -O "$ASSET" https://files2.freedownloadmanager.org/6/latest/freedownloadmanager.deb
-          echo "asset=$ASSET" >> "$GITHUB_ENV"
-          echo "version=$(dpkg-deb -f "$ASSET" Version)" >> "$GITHUB_ENV"
-          echo "hash=$(nix hash file --algorithm sha256 "$ASSET")" >> "$GITHUB_ENV"
-
+          HASH="sha256-$(openssl dgst -sha256 -binary "$ASSET" | base64 -w0)"
+          VERSION="$(dpkg-deb -f "$ASSET" Version)"
+          [ -n "$HASH" ] && [ -n "$VERSION" ] || { echo "::error::hash or version empty"; exit 1; }
+          echo "asset=$ASSET"      >> "$GITHUB_ENV"
+          echo "version=$VERSION"  >> "$GITHUB_ENV"
+          echo "hash=$HASH"        >> "$GITHUB_ENV"
       - name: mirror .deb to release (immutable)
         env:
           GH_TOKEN: ${{ github.token }}
