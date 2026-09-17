@@ -60,6 +60,7 @@ stdenv.mkDerivation {
     gst-plugins-ugly
   ])
   ++ (with xorg; [
+    xcbutilcursor
     libX11
     libxcb
     xcbutilwm
@@ -88,6 +89,8 @@ stdenv.mkDerivation {
     cp -r opt/freedownloadmanager/. $out/opt/freedownloadmanager/
 
     rm -f $out/opt/freedownloadmanager/plugins/sqldrivers/libqsql{ibase,mimer,mysql,oci}.so
+    rm -f $out/opt/freedownloadmanager/plugins/sqldrivers/libqsql{ibase,mimer,mysql,oci}.so
+    rm -f $out/opt/freedownloadmanager/plugins/imageformats/libqtiff.so
     mkdir -p $out/bin
     ln -s $out/opt/freedownloadmanager/fdm $out/bin/freedownloadmanager
 

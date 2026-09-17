@@ -58,11 +58,12 @@ jobs:
           }
           EOF
           nix build .#default
-      - name: commit and push if changed
+        - name: commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add version.nix
+          if [ -f flake.lock ]; then git add flake.lock; fi
           if ! git diff --cached --quiet; then
             git commit -m "chore: auto-update FDM to v${{ env.version }}"
             git push
