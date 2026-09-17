@@ -46,6 +46,8 @@ stdenv.mkDerivation {
     stdenv.cc.cc
     udev
     libpulseaudio
+    libxkbcommon
+    gtk3
   ]
   ++ (with gst_all_1; [
     gstreamer
@@ -83,6 +85,7 @@ stdenv.mkDerivation {
     mkdir -p $out/opt/freedownloadmanager
     cp -r opt/freedownloadmanager/. $out/opt/freedownloadmanager/
 
+    rm -f $out/opt/freedownloadmanager/plugins/sqldrivers/libqsql{ibase,mimer,mysql,oci}.so
     mkdir -p $out/bin
     ln -s $out/opt/freedownloadmanager/fdm $out/bin/freedownloadmanager
 
