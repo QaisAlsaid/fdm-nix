@@ -17,12 +17,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
-
       - name: fetch .deb, extract version and hash
+        env:
+          ASSET: freedownloadmanager.deb
         run: |
-          wget -O fdm.deb https://files2.freedownloadmanager.org/6/latest/freedownloadmanager.deb
-          echo "version=$(dpkg-deb -f fdm.deb Version)" >> "$GITHUB_ENV"
-          echo "hash=$(nix hash file --algorithm sha256 fdm.deb)" >> "$GITHUB_ENV"
+          wget -O "$ASSET" https://files2.freedownloadmanager.org/6/latest/freedownloadmanager.deb
+          echo "asset=$ASSET" >> "$GITHUB_ENV"
+          echo "version=$(dpkg-deb -f "$ASSET" Version)" >> "$GITHUB_ENV"
+          echo "hash=$(nix hash file --algorithm sha256 "$ASSET")" >> "$GITHUB_ENV"
 
       - name: mirror .deb to release (immutable)
         env:
@@ -30,11 +32,16 @@ jobs:
         run: |
           TAG="v${{ env.version }}"
           if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "release $TAG already exists. keeping existing asset"
+            if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx "${{ env.asset }}"; then
+              echo "release and asset already present"
+            else
+              echo "::error::release $TAG exists but is missing ${{ env.asset }} (wrong asset name?)"
+              exit 1
+            fi
           else
-            gh release create "$TAG" fdm.deb \
+            gh release create "$TAG" "${{ env.asset }}" \
               --title "Free Download Manager $TAG" \
-              --notes "automated mirror of freedownloadmanager.org latest .deb"
+              --notes "Automated mirror of freedownloadmanager.org latest .deb"
           fi
 
       - name: write version.nix and verify build
@@ -42,12 +49,11 @@ jobs:
           cat << EOF > version.nix
           {
             version = "${{ env.version }}";
-            url = "https://github.com/${{ github.repository }}/releases/download/v${{ env.version }}/freedownloadmanager.deb";
+            url = "https://github.com/${{ github.repository }}/releases/download/v${{ env.version }}/${{ env.asset }}";
             hash = "${{ env.hash }}";
           }
           EOF
           nix build .#default
-
       - name: commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
