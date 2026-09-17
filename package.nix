@@ -11,6 +11,8 @@
   libpqxx,
   unixODBC,
   libpulseaudio,
+  libxkbcommon,
+  gtk3,
   gst_all_1,
   xorg,
 }:
