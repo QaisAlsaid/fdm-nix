@@ -8,39 +8,52 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: update-fdm
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
 
-      - name: fetch .deb, extract version, and calculate hash
+      - name: fetch .deb, extract version and hash
         run: |
-          sudo apt-get update && sudo apt-get install -y dpkg-dev xxd
-          
           wget -O fdm.deb https://files2.freedownloadmanager.org/6/latest/freedownloadmanager.deb
-          
-          VERSION=$(dpkg-deb -f fdm.deb Version)
-          
-          HEX=$(sha256sum fdm.deb | awk '{print $1}')
-          B64=$(echo "$HEX" | xxd -r -p | base64 -w 0)
-          HASH="sha256-$B64"
-          
+          echo "version=$(dpkg-deb -f fdm.deb Version)" >> "$GITHUB_ENV"
+          echo "hash=$(nix hash file --algorithm sha256 fdm.deb)" >> "$GITHUB_ENV"
+
+      - name: mirror .deb to release (immutable)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ env.version }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "release $TAG already exists. keeping existing asset"
+          else
+            gh release create "$TAG" fdm.deb \
+              --title "Free Download Manager $TAG" \
+              --notes "automated mirror of freedownloadmanager.org latest .deb"
+          fi
+
+      - name: write version.nix and verify build
+        run: |
           cat << EOF > version.nix
           {
-            version = "$VERSION";
-            hash = "$HASH";
+            version = "${{ env.version }}";
+            url = "https://github.com/${{ github.repository }}/releases/download/v${{ env.version }}/freedownloadmanager.deb";
+            hash = "${{ env.hash }}";
           }
           EOF
-          
-          rm fdm.deb
+          nix build .#default
 
-      - name: commit and push changes if updated
+      - name: commit and push if changed
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add version.nix
-          
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto-update FDM to version v$VERSION" && git push)
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: auto-update FDM to v${{ env.version }}"
+            git push
+          fi
